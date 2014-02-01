@@ -18,7 +18,10 @@ def _applyStyle(name, isTerminal):
 def build_markdown(root):
 	output = '\n'
 	rootDepth = len(os.path.dirname(root).split(os.sep))
+
 	for path, dirs, files in os.walk(root):
+		dirs.sort() # the next step of walk follows the order of dirs
+
 		head, tail = os.path.split(path)
 		
 		padding = '\t' * (len(head.split(os.sep)) - rootDepth)
@@ -30,60 +33,48 @@ def build_markdown(root):
 
 
 def build_html(mdString, stylesheet, htmlTemplate):
-	template = htmlTemplate.read()
-	# template = ('<!DOCTYPE html>\n'
-	# 			'<html>\n'
-	# 			'<head>\n'
-	# 			'	<title></title>\n'
-	# 			'	<style type="text/css">\n'
-	# 			'{}\n'
-	# 			'	</style>\n'
-	# 			'</head>\n'
-	# 			'<body>\n'
-	# 			'	<div class="tree">\n'
-	# 			'{}\n'
-	# 			'	</div>\n'
-	# 			'</body>\n'
-	# 			'</html>')
+	template, style = '{}{}',''
+
+	with open(htmlTemplate,'r', encoding='utf-8') as htmlFile:
+		template = htmlFile.read()
 
 	if stylesheet:
-		style = stylesheet.read()
-	else:
-		style = ''
+		with open(stylesheet, 'r', encoding='utf-8') as cssFile:
+			style = cssFile.read()
 
 	return template.format(style , markdown.markdown(mdString, output_format='html5'))
 
-def _main(args):
 
+def _main(args):
 	markdown = build_markdown(args.dir)
 
-	if args.mdout:
-		args.mdout.write(markdown)
+	if args.md_output_enabled:
+		with open(os.path.join(args.output_dir, 'tree.md'),'w', encoding='utf-8') as markdown_output:
+			markdown_output.write(markdown)
 
-	if args.no_html:
-		print(markdown)
-	else:
-		html = build_html(markdown, args.stylesheet, args.htmlTemplate)
-		open('output.html', 'w').write(html)
-		print(html)
-
+	if args.html_output_enabled:
+		with open(os.path.join(args.output_dir, 'tree.html'),'w', encoding='utf-8') as html_output:
+			html_output.write(build_html(markdown, args.stylesheet, args.htmlTemplate))
 
 
 if __name__ == '__main__':
 
 	scriptDir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
-	parser = argparse.ArgumentParser(description='Display the file tree in markdown and html.')
-	parser.add_argument('-m', dest='mdout', metavar='md-output', type=argparse.FileType('w'), 
-						help='markdown output file' )
-	parser.add_argument('dir', nargs='?', help='directory to scan', default='.')
-	parser.add_argument('--no-html', action='store_true',
-						help='disable HTML output. The markdown will be printed instead')
-	parser.add_argument('--css', type=argparse.FileType('r'), dest='stylesheet', 
-						default=open(os.path.join(scriptDir, 'default.css'),'r'),
+	parser = argparse.ArgumentParser(description='Display the file tree in markdown and html. If enabled, the files '
+		'tree.html and tree.md will be created in [output_dir]')
+	parser.add_argument('-o', dest='output_dir', metavar='output_dir', default='.', 
+						help='Output directory. Defaults to the current directory.' )
+	parser.add_argument('dir', nargs='?', default='.', help='Directory to scan. Defaults to the current directory.', )
+	parser.add_argument('-m', '--markdown', action='store_true', dest='md_output_enabled',
+						help='Enable markdown output.')
+	parser.add_argument('--no-html', action='store_false', dest='html_output_enabled',
+						help='Disable HTML output.')
+	parser.add_argument('--html-template', dest='htmlTemplate', default=os.path.join(scriptDir, 'default.html'),
+						help='HTML skeleton. Requires two "{}" placeholders for the generated css and the html')
+	parser.add_argument('--css', dest='stylesheet', default=os.path.join(scriptDir, 'default.css'),
 						help='CSS stylesheet to use for the HTML output. Will be embedded in it.')
 
 	args = parser.parse_args()
-	args.htmlTemplate = open(os.path.join(scriptDir, 'template.html'),'r')
 	
 	_main(args)
