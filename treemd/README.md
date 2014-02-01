@@ -1,6 +1,8 @@
 mdtree
 ======
 
+Writes the directory hierarchy in markdown and html
+
 ## Requirements
 
 	* Python 3

@@ -6,40 +6,45 @@ import string
 import markdown
 import argparse
 
+
 def _applyStyle(name, isTerminal):
-	name = name.replace('[','\[')
+	name = name.replace('[','\[') # Avoid names with square brackets to be parsed to links
 	if isTerminal:
 		return name
 	else:
 		return '**{}**'.format(name)
 
+
 def build_markdown(root):
 	output = '\n'
+	rootDepth = len(os.path.dirname(root).split(os.sep))
 	for path, dirs, files in os.walk(root):
 		head, tail = os.path.split(path)
 		
-		padding = '\t' * (len(head.split(os.sep)) -1)
+		padding = '\t' * (len(head.split(os.sep)) - rootDepth)
 		name = _applyStyle(tail, len(dirs) is 0)
 
 		output += '{}- {}\n'.format(padding, name)
 
 	return output
 
-def build_html(mdString, stylesheet):
-	template = ('<!DOCTYPE html>\n'
-				'<html>\n'
-				'<head>\n'
-				'	<title></title>\n'
-				'	<style type="text/css">\n'
-				'{}\n'
-				'	</style>\n'
-				'</head>\n'
-				'<body>\n'
-				'	<div class="tree">\n'
-				'{}\n'
-				'	</div>\n'
-				'</body>\n'
-				'</html>')
+
+def build_html(mdString, stylesheet, htmlTemplate):
+	template = htmlTemplate.read()
+	# template = ('<!DOCTYPE html>\n'
+	# 			'<html>\n'
+	# 			'<head>\n'
+	# 			'	<title></title>\n'
+	# 			'	<style type="text/css">\n'
+	# 			'{}\n'
+	# 			'	</style>\n'
+	# 			'</head>\n'
+	# 			'<body>\n'
+	# 			'	<div class="tree">\n'
+	# 			'{}\n'
+	# 			'	</div>\n'
+	# 			'</body>\n'
+	# 			'</html>')
 
 	if stylesheet:
 		style = stylesheet.read()
@@ -58,7 +63,9 @@ def _main(args):
 	if args.no_html:
 		print(markdown)
 	else:
-		print(build_html(markdown, args.stylesheet))
+		html = build_html(markdown, args.stylesheet, args.htmlTemplate)
+		open('output.html', 'w').write(html)
+		print(html)
 
 
 
@@ -77,5 +84,6 @@ if __name__ == '__main__':
 						help='CSS stylesheet to use for the HTML output. Will be embedded in it.')
 
 	args = parser.parse_args()
+	args.htmlTemplate = open(os.path.join(scriptDir, 'template.html'),'r')
 	
 	_main(args)
